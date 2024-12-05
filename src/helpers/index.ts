@@ -11,7 +11,7 @@ interface ExcelRecord {
 function readExcelData(filePath: string, sheetName: string): ExcelRecord[] {
   const wb = xlsx.readFile(filePath, { cellDates: true });
   const ws = wb.Sheets[sheetName];
-  ws["!ref"] = "A2:K100";
+  ws["!ref"] = "A2:O100";
   const jsonData: ExcelRecord[] = xlsx.utils.sheet_to_json(ws);
   jsonData.pop();
   return jsonData;
@@ -307,8 +307,6 @@ function transformData(
           ["LAST NAME"]: record["Last Name"],
         })["Last Name"];
 
-        record["DOB (DD/MM/YYYY)"] = " ";
-
         const dot = record.TITLE.indexOf(".");
         if (dot > 0) {
           record.TITLE = record.TITLE.replace(".", "");
@@ -331,9 +329,14 @@ function transformData(
           record.GENDER = "Male";
         }
 
+        if (!record["DOB (DD/MM/YYYY)"]) {
+          record["DOB (DD/MM/YYYY)"] = " ";
+          console.warn(
+            "Warning: 'DOB (DD/MM/YYYY)' property not found in record."
+          );
+        }
+
         record["CITIZENSHIP"] = "INDIA";
-        record["PASSPORT NO"] = " ";
-        record["EXPIRY DATE(DD/MM/YYYY)"] = " ";
 
         delete record["SL"];
         delete record["Billing A/C"];
@@ -344,7 +347,19 @@ function transformData(
         delete record["Display Pnr "];
         delete record["Supplier"];
 
-        return record;
+        const orderedRecord = {
+          TYPE: record.TYPE,
+          TITLE: record.TITLE,
+          "FIRST NAME": record["FIRST NAME"],
+          "LAST NAME": record["LAST NAME"],
+          "DOB (DD/MM/YYYY)": record["DOB (DD/MM/YYYY)"],
+          GENDER: record.GENDER,
+          CITIZENSHIP: record.CITIZENSHIP,
+          "PASSPORT NO": record["PASSPORT NO"],
+          "EXPIRY DATE(DD/MM/YYYY)": record["EXPIRY DATE(DD/MM/YYYY)"],
+        };
+
+        return Object.assign(orderedRecord, record);
       });
     case "d.xlsx":
       return jsonData.map((record: ExcelRecord) => {
@@ -407,6 +422,7 @@ function transformData(
         delete record["AQ ID"];
         delete record["Display Pnr "];
         delete record["Supplier"];
+        delete record["DOB"];
 
         return record;
       });
