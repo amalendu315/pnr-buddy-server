@@ -485,6 +485,152 @@ function transformData(
 
         return record;
       });
+    case "e.xlsx":
+      return jsonData.map((record: ExcelRecord) => {
+         delete Object.assign(record, {
+           ["TYPE"]: record["Passenger Type*"],
+         })["Passenger Type*"];
+
+        delete Object.assign(record, { ["TITLE"]: record["Title"] })["Title"];
+        delete Object.assign(record, {
+          ["FIRST NAME"]: record["First Name"],
+        })["First Name"];
+        delete Object.assign(record, {
+          ["MIDDLE NAME"]: record["Middle Name"],
+        })["Middle Name"];
+        delete Object.assign(record, {
+          ["LAST NAME"]: record["Last Name"],
+        })["Last Name"];
+
+        const dot = record.TITLE.indexOf(".");
+        if (dot > 0) {
+          record.TITLE = record.TITLE.replace(".", "");
+        }
+        if (record.TITLE === "Mr") {
+          record.GENDER = "Male";
+        }
+        if (record.TITLE === "Mrs") {
+          record.GENDER = "Female";
+        }
+        if (record.TITLE === "Ms") {
+          record.GENDER = "Female";
+        }
+        if (record.TITLE === "Miss") {
+          record.TITLE = "Ms";
+          record.GENDER = "Female";
+        }
+        if (record.TITLE === "Mstr") {
+          record.TITLE = "Mr";
+          record.GENDER = "Male";
+        }
+
+        if (!record["DOB (DD/MM/YYYY)"]) {
+          record["DOB (DD/MM/YYYY)"] = " ";
+          console.warn(
+            "Warning: 'DOB (DD/MM/YYYY)' property not found in record."
+          );
+        }
+
+        // record["CITIZENSHIP"] = "INDIA";
+
+        delete record["SL"];
+        delete record["Billing A/C"];
+        delete record["Login ID"];
+        delete record["Price"];
+        delete record["Entry Date"];
+        delete record["AQ ID"];
+        delete record["Display Pnr "];
+        delete record["Supplier"];
+        delete record["PASSPORT NO"];
+        delete record["EXPIRY DATE(DD/MM/YYYY)"];
+
+        const orderedRecord = {
+          TYPE: record.TYPE === "" ? record.TYPE = "Adult": record.TYPE,
+          TITLE: record.TITLE,
+          "FIRST NAME": record["FIRST NAME"],
+          "MIDDLE NAME": record["MIDDLE NAME"],
+          "LAST NAME": record["LAST NAME"],
+          "DOB (DD/MM/YYYY)": record["DOB (DD/MM/YYYY)"],
+          GENDER: record.GENDER,
+          // CITIZENSHIP: record.CITIZENSHIP,
+          // "PASSPORT NO": record["PASSPORT NO"],
+          // "EXPIRY DATE(DD/MM/YYYY)": record["EXPIRY DATE(DD/MM/YYYY)"],
+        };
+
+        return Object.assign(orderedRecord, record);
+      });
+    case "f.xlsx":
+      return jsonData.map((record: ExcelRecord) => {
+        delete Object.assign(record, {
+          ["TYPE"]: record["Passenger Type*"],
+        })["Passenger Type*"];
+
+        delete Object.assign(record, { ["TITLE"]: record["Title"] })["Title"];
+        delete Object.assign(record, {
+          ["FIRST NAME"]: record["First Name"],
+        })["First Name"];
+        delete Object.assign(record, {
+          ["MIDDLE NAME"]: record["Middle Name"],
+        })["Middle Name"];
+        delete Object.assign(record, {
+          ["LAST NAME"]: record["Last Name"],
+        })["Last Name"];
+
+        const dot = record.TITLE.indexOf(".");
+        if (dot > 0) {
+          record.TITLE = record.TITLE.replace(".", "");
+        }
+        if (record.TITLE === "Mr") {
+          record.GENDER = "Male";
+        }
+        if (record.TITLE === "Mrs") {
+          record.GENDER = "Female";
+        }
+        if (record.TITLE === "Ms") {
+          record.GENDER = "Female";
+        }
+        if (record.TITLE === "Miss") {
+          record.TITLE = "Ms";
+          record.GENDER = "Female";
+        }
+        if (record.TITLE === "Mstr") {
+          record.TITLE = "Mr";
+          record.GENDER = "Male";
+        }
+
+        if (!record["DOB (DD/MM/YYYY)"]) {
+          record["DOB (DD/MM/YYYY)"] = " ";
+          console.warn(
+            "Warning: 'DOB (DD/MM/YYYY)' property not found in record."
+          );
+        }
+
+        // record["CITIZENSHIP"] = "INDIA";
+
+        delete record["SL"];
+        delete record["Billing A/C"];
+        delete record["Login ID"];
+        delete record["Price"];
+        delete record["Entry Date"];
+        delete record["AQ ID"];
+        delete record["Display Pnr "];
+        delete record["Supplier"];
+
+        const orderedRecord = {
+          TYPE: record.TYPE === "" ? (record.TYPE = "Adult") : record.TYPE,
+          TITLE: record.TITLE,
+          "FIRST NAME": record["FIRST NAME"],
+          "MIDDLE NAME": record["MIDDLE NAME"],
+          "LAST NAME": record["LAST NAME"],
+          "DOB (DD/MM/YYYY)": record["DOB (DD/MM/YYYY)"],
+          GENDER: record.GENDER,
+          // CITIZENSHIP: record.CITIZENSHIP,
+          "PASSPORT NO": record["PASSPORT NO"],
+          "EXPIRY DATE(DD/MM/YYYY)": record["EXPIRY DATE(DD/MM/YYYY)"],
+        };
+
+        return Object.assign(orderedRecord, record);
+      });
     default:
       throw new Error(`Unsupported airline code: ${airlineCode}`);
   }
@@ -536,6 +682,10 @@ function getAirlineName(airlineCode: string): string {
       return "Druk Air";
     case "b.xlsx":
       return "Bhutan Airlines";
+    case "e.xlsx":
+      return "Air India Domestic";
+    case "f.xlsx":
+      return "Air India International";
     default:
       return "Unknown Airline";
   }
