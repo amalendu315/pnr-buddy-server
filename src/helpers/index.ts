@@ -487,9 +487,7 @@ function transformData(
       });
     case "e.xlsx":
       return jsonData.map((record: ExcelRecord) => {
-         delete Object.assign(record, {
-           ["TYPE"]: record["Passenger Type*"],
-         })["Passenger Type*"];
+         record.TYPE = "Adult";
 
         delete Object.assign(record, { ["TITLE"]: record["Title"] })["Title"];
         delete Object.assign(record, {
@@ -545,7 +543,7 @@ function transformData(
         delete record["EXPIRY DATE(DD/MM/YYYY)"];
 
         const orderedRecord = {
-          TYPE: record.TYPE === "" ? record.TYPE = "Adult": record.TYPE,
+          TYPE:record.TYPE,
           TITLE: record.TITLE,
           "FIRST NAME": record["FIRST NAME"],
           "MIDDLE NAME": record["MIDDLE NAME"],
@@ -561,9 +559,11 @@ function transformData(
       });
     case "f.xlsx":
       return jsonData.map((record: ExcelRecord) => {
-        delete Object.assign(record, {
-          ["TYPE"]: record["Passenger Type*"],
-        })["Passenger Type*"];
+        // delete Object.assign(record, {
+        //   ["TYPE"]: record["Passenger Type*"],
+        // })["Passenger Type*"];
+
+        record.TYPE = "Adult";
 
         delete Object.assign(record, { ["TITLE"]: record["Title"] })["Title"];
         delete Object.assign(record, {
@@ -617,7 +617,7 @@ function transformData(
         delete record["Supplier"];
 
         const orderedRecord = {
-          TYPE: record.TYPE === "" ? (record.TYPE = "Adult") : record.TYPE,
+          TYPE: record.TYPE,
           TITLE: record.TITLE,
           "FIRST NAME": record["FIRST NAME"],
           "MIDDLE NAME": record["MIDDLE NAME"],
