@@ -644,9 +644,6 @@ function transformData(
           ["FIRST NAME"]: record["First Name"],
         })["First Name"];
         delete Object.assign(record, {
-          ["MIDDLE NAME"]: record["Middle Name"],
-        })["Middle Name"];
-        delete Object.assign(record, {
           ["LAST NAME"]: record["Last Name"],
         })["Last Name"];
 
