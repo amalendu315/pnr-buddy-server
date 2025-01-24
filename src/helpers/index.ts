@@ -695,7 +695,7 @@ function transformData(
           TYPE: record.TYPE,
           TITLE: record.TITLE,
           "FIRST NAME": record["FIRST NAME"],
-          "MIDDLE NAME": record["MIDDLE NAME"],
+          // "MIDDLE NAME": record["MIDDLE NAME"],
           "LAST NAME": record["LAST NAME"],
           "DOB (DD/MM/YYYY)": record["DOB (DD/MM/YYYY)"],
           GENDER: record.GENDER,
