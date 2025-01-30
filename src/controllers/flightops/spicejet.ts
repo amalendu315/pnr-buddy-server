@@ -55,147 +55,154 @@ export const getSpicejetStatus = async (req: Request, res: Response) => {
         const ws = wb.Sheets["Sheet1"];
         ws["!ref"] = "A1:K3000"; // Adjust the range if necessary
         const jsonSheet = xlsx.utils.sheet_to_json(ws);
-        const allResults = await Promise.all(
-          jsonSheet.map(async (record: any) => {
-            const PNR = record?.PNR;
-            const config1 = {
-              method: "get",
-              url: `${spicejetPnrRetrieveUrl}?recordLocator=${PNR}&emailAddress=airlines@airiq.in`,
-              headers: {
-                Authorization: myToken,
-                "Content-Type": "application/json",
-                "User-Agent":
-                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-              },
-              httpsAgent: new https.Agent({ rejectUnauthorized: false }),
-            };
-            let response: AxiosResponse<any>;
-              response = await axios(config1);
-            
-            try {
-              if (!response || !response.data || !response.data.data) {
-                throw new Error("Invalid API response");
-              }
-              const bookingData = response.data.data;
-              const journeys = bookingData.journeys;
-              const length = journeys?.length;
+       const allResults = await Promise.all(
+         jsonSheet.map(async (record: any) => {
+           try {
+             const PNR = record?.PNR;
+             if (!PNR) {
+               throw new Error("Missing PNR in input file.");
+             }
 
-              if (length > 0) {
-                const designator = bookingData.journeys[0].designator;
-                const flightNumber =
-                  bookingData.journeys[0].segments[0].identifier.identifier;
-                const depSector = designator.origin;
-                const arrSector = designator.destination;
-                const depDetails = designator.departure.split("T");
-                const depDate = depDetails[0];
-                const depTime = checkTimeFormat(depDetails[1].substring(0, 5));
-                const arrDetails = designator.arrival.split("T");
-                const arrTime = checkTimeFormat(arrDetails[1].substring(0, 5));
+             const config1 = {
+               method: "post",
+               url: `${spicejetPnrRetrieveUrl}?recordLocator=${PNR}&emailAddress=airlines@airiq.in`,
+               headers: {
+                 Authorization: myToken,
+                 "Content-Type": "application/json",
+               },
+               // httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+             };
 
-                const PAX = Object.keys(bookingData.passengers).length;
+             let response = await axios(config1);
 
-                const OldPur = JSON.stringify(record.Pur); //Quantity
+             if (!response?.data?.data && !response?.data?.bookingData) {
+               throw new Error("Invalid API response");
+             }
 
-                ////departure a-----------------------
+             const bookingData =
+               response.data.data || response?.data.bookingData;
+             if (!bookingData?.journeys) {
+               throw new Error("No journeys found for this PNR.");
+             }
+             const journeys = bookingData.journeys;
+             const length = journeys?.length || 0;
 
-                const DepinputTime = record.Dep;
-                const date = moment.utc(DepinputTime).tz("Asia/Kolkata");
-                const minute = date.minutes();
+             if (length > 0) {
+               const designator = bookingData.journeys[0].designator;
+               const flightNumber =
+                 bookingData.journeys[0].segments[0].identifier.identifier;
+               const depSector = designator.origin;
+               const arrSector = designator.destination;
+               const depDetails = designator.departure.split("T");
+               const depDate = depDetails[0];
+               const depTime = checkTimeFormat(depDetails[1].substring(0, 5));
+               const arrDetails = designator.arrival.split("T");
+               const arrTime = checkTimeFormat(arrDetails[1].substring(0, 5));
 
-                const lastDigit = minute % 10;
-                let roundedMinutes = 0;
-                lastDigit === 0 || lastDigit === 5
-                  ? (roundedMinutes = minute)
-                  : (roundedMinutes = minute + 1);
+               const PAX = Object.keys(bookingData.passengers).length;
 
-                date.minutes(roundedMinutes);
+               const OldPur = JSON.stringify(record.Pur); //Quantity
 
-                const OldDep = date.format("HH:mm A");
+               ////departure a-----------------------
 
-                ////arrival b-----------------------
+               const DepinputTime = record.Dep;
+               const date = moment.utc(DepinputTime).tz("Asia/Kolkata");
+               const minute = date.minutes();
 
-                const ArrinputTime = record.Arr;
-                const dateb = moment.utc(ArrinputTime).tz("Asia/Kolkata");
-                const minuteb = dateb.minutes();
+               const lastDigit = minute % 10;
+               let roundedMinutes = 0;
+               lastDigit === 0 || lastDigit === 5
+                 ? (roundedMinutes = minute)
+                 : (roundedMinutes = minute + 1);
 
-                const lastDigitb = minuteb % 10;
-                let roundedMinutesb = 0;
-                lastDigitb === 0 || lastDigitb === 5
-                  ? (roundedMinutesb = minuteb)
-                  : (roundedMinutesb = minuteb + 1);
+               date.minutes(roundedMinutes);
 
-                dateb.minutes(roundedMinutesb);
-                const OldArr = dateb.format("HH:mm A");
+               const OldDep = date.format("HH:mm A");
 
-                const OldDate = moment(record.TravelDate).format("YYYY-MM-DD"); //Date
+               ////arrival b-----------------------
 
-                const CheckStatus = () => {
-                  if (
-                    record.Flight != flightNumber ||
-                    OldPur != JSON.stringify(PAX) ||
-                    OldDate != depDate ||
-                    OldDep != depTime ||
-                    OldArr != arrTime
-                  ) {
-                    return "BAD";
-                  } else {
-                    return "GOOD";
-                  }
-                };
+               const ArrinputTime = record.Arr;
+               const dateb = moment.utc(ArrinputTime).tz("Asia/Kolkata");
+               const minuteb = dateb.minutes();
 
-                const MyRemarks = CheckStatus();
-                const result =
-                  record.PNR +
-                  "|" +
-                  depSector +
-                  " " +
-                  arrSector +
-                  "|" +
-                  record.Flight +
-                  "|" +
-                  flightNumber +
-                  "|" +
-                  OldPur +
-                  "|" +
-                  PAX +
-                  "|" +
-                  OldDate +
-                  "|" +
-                  depDate +
-                  "|" +
-                  OldDep +
-                  "|" +
-                  depTime +
-                  "|" +
-                  OldArr +
-                  "|" +
-                  arrTime +
-                  "|" +
-                  MyRemarks;
-                return {
-                  pnr: record.PNR,
-                  data: result,
-                };
-              } else {
-                const PNR = bookingData.recordLocator;
-                const result = `${PNR} is Cancelled`;
-                return result;
-              }
-            } catch (error: any) {
-              if (error?.response?.status === 404) {
-                return {
-                  pnr: record.PNR,
-                  error: `PNR NOT FOUND ${record.PNR}`,
-                };
-              } else {
-                return {
-                  pnr: record.PNR,
-                  error: `Error processing PNR ${record.PNR}: ${error?.message}`,
-                };
-              }
-            }
-          })
-        );
+               const lastDigitb = minuteb % 10;
+               let roundedMinutesb = 0;
+               lastDigitb === 0 || lastDigitb === 5
+                 ? (roundedMinutesb = minuteb)
+                 : (roundedMinutesb = minuteb + 1);
+
+               dateb.minutes(roundedMinutesb);
+               const OldArr = dateb.format("HH:mm A");
+
+               const OldDate = moment(record.TravelDate).format("YYYY-MM-DD"); //Date
+
+               const CheckStatus = () => {
+                 if (
+                   record.Flight != flightNumber ||
+                   OldPur != JSON.stringify(PAX) ||
+                   OldDate != depDate ||
+                   OldDep != depTime ||
+                   OldArr != arrTime
+                 ) {
+                   return "BAD";
+                 } else {
+                   return "GOOD";
+                 }
+               };
+
+               const MyRemarks = CheckStatus();
+               const result =
+                 record.PNR +
+                 "|" +
+                 depSector +
+                 " " +
+                 arrSector +
+                 "|" +
+                 record.Flight +
+                 "|" +
+                 flightNumber +
+                 "|" +
+                 OldPur +
+                 "|" +
+                 PAX +
+                 "|" +
+                 OldDate +
+                 "|" +
+                 depDate +
+                 "|" +
+                 OldDep +
+                 "|" +
+                 depTime +
+                 "|" +
+                 OldArr +
+                 "|" +
+                 arrTime +
+                 "|" +
+                 MyRemarks;
+               return {
+                 pnr: record.PNR,
+                 data: result,
+               };
+             } else {
+               const PNR = bookingData.recordLocator;
+               const result = `${PNR} is Cancelled`;
+               return result;
+             }
+           } catch (error: any) {
+             if (error?.response?.status === 404) {
+               return {
+                 pnr: record.PNR,
+                 error: `PNR NOT FOUND ${record.PNR}`,
+               };
+             } else {
+               return {
+                 pnr: record.PNR,
+                 error: `Error processing PNR ${record.PNR}: ${error?.message}`,
+               };
+             }
+           }
+         })
+       );
         const { results, errors } = allResults.reduce(
           (acc, result: any) => {
             if (result?.error) {
