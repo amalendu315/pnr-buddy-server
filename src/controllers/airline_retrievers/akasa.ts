@@ -81,7 +81,7 @@ export const getAkasaData = async (req: Request, res: Response) => {
 
            const config2 = {
              method: "get",
-             url: `${akasaPnrRetrieveUrl}?recordLocator=${pnr}&emailAddress=airlinesairiq@gmail.com`,
+             url: `${akasaPnrRetrieveUrl}?recordLocator=${pnr}&emailAddress=INFO.AIRIQ1@GMAIL.COM`,
              headers: {
                Authorization: header,
                "Content-Type": "application/json",

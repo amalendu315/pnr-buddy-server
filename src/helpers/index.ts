@@ -707,6 +707,79 @@ function transformData(
 
         return Object.assign(orderedRecord, record);
       });
+    case "l.xlsx":
+      return jsonData.map((record: ExcelRecord) => {
+        // delete Object.assign(record, {
+        //   ["TYPE"]: record["Passenger Type*"],
+        // })["Passenger Type*"];
+
+        record.PASSENGER = "AD";
+
+        delete Object.assign(record, { ["TITLE"]: record["Title"] })["Title"];
+        delete Object.assign(record, {
+          ["FIRST NAME"]: record["First Name"],
+        })["First Name"];
+        delete Object.assign(record, {
+          ["LAST NAME"]: record["Last Name"],
+        })["Last Name"];
+
+        const dot = record.TITLE.indexOf(".");
+        if (dot > 0) {
+          record.TITLE = record.TITLE.replace(".", "");
+        }
+        if (record.TITLE === "Mr") {
+          record.GENDER = "Male";
+        }
+        if (record.TITLE === "Mrs") {
+          record.GENDER = "Female";
+        }
+        if (record.TITLE === "Ms") {
+          record.GENDER = "Female";
+        }
+        if (record.TITLE === "Miss") {
+          record.TITLE = "Ms";
+          record.GENDER = "Female";
+        }
+        if (record.TITLE === "Mstr") {
+          record.TITLE = "Mr";
+          record.GENDER = "Male";
+          record.PASSENGER = "CH";
+        }
+
+        if (!record["DOB (DD/MM/YYYY)"]) {
+          record["DOB (DD/MM/YYYY)"] = " ";
+          console.warn(
+            "Warning: 'DOB (DD/MM/YYYY)' property not found in record."
+          );
+        }
+
+        delete Object.assign(record, {
+          ["MOBILE NUMBER"]: record["MOBILE NUMBER"],
+        })["MOBILE NUMBER"];
+
+        record["NATIONALITY"] = "India";
+
+        delete record["SL"];
+        delete record["Billing A/C"];
+        delete record["Login ID"];
+        delete record["Price"];
+        delete record["Entry Date"];
+        delete record["AQ ID"];
+        delete record["Display Pnr "];
+        delete record["Supplier"];
+
+        const orderedRecord = {
+          Passenger: record.PASSENGER,
+          Title: record.TITLE,
+          "First Name": record["FIRST NAME"],
+          // "MIDDLE NAME": record["MIDDLE NAME"],
+          "Last Name": record["LAST NAME"],
+          Nationality: record["NATIONALITY"],
+          "Date of Birth": record["DOB (DD/MM/YYYY)"],
+        };
+
+        return orderedRecord;
+      });
     default:
       throw new Error(`Unsupported airline code: ${airlineCode}`);
   }
@@ -764,6 +837,8 @@ function getAirlineName(airlineCode: string): string {
       return "Air India International";
     case "h.xlsx":
       return "Air India Express International";
+      case "l.xlsx":
+      return "Air Arabia";
     default:
       return "Unknown Airline";
   }

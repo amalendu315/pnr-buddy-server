@@ -19,6 +19,7 @@ const app = express();
 //Middleware usage
 const allowedOrigins = [
   "http://localhost:3000",
+  "http://localhost:3001",
   "https://pnrbuddy.netlify.app",
   "http://ec2-3-110-55-153.ap-south-1.compute.amazonaws.com",
   "http://ec2-35-154-145-73.ap-south-1.compute.amazonaws.com:3001",
