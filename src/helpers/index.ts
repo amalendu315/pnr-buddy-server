@@ -86,7 +86,14 @@ function transformData(
         delete record["Display Pnr "];
         delete record["Supplier"];
 
-        return record;
+        return {
+          "TYPE": record["Pax Type"],
+          "TITLE": record.Title,
+          "FIRST NAME": record["First Name"],
+          "LAST NAME": record["Last Name"],
+          "DOB(DD-MMM-YYYY)": record["Date of Birth (DD-MMM-YYYY)"],
+          "GENDER": record.Gender
+        };
       });
     case "g.xlsx":
       return jsonData.map((record) => {
