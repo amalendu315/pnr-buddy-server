@@ -91,7 +91,7 @@ function transformData(
           "TITLE": record.Title,
           "FIRST NAME": record["First Name"],
           "LAST NAME": record["Last Name"],
-          "DOB (DD-MMM-YYYY)": record["Date of Birth (DD-MMM-YYYY)"],
+          "DOB (DD-MM-YYYY)": record["Date of Birth (DD-MMM-YYYY)"],
           "GENDER": record.Gender
         };
       });
