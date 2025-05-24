@@ -3,7 +3,6 @@ import { spicejetPnrRetrieveUrl, spicejetTokenUrl } from "../../constants";
 import axios, { AxiosResponse } from "axios";
 import * as xlsx from "xlsx";
 import moment from "moment-timezone";
-import https from "https";
 
 const TokenConfig = {
   method: "post",
@@ -51,10 +50,18 @@ export const getSpicejetStatus = async (req: Request, res: Response) => {
     if (!fullName) {
       throw new Error("No file uploaded");
     }
+
     const wb = xlsx.readFile("./uploads/" + fullName, { cellDates: true });
     const ws = wb.Sheets["Sheet1"];
     ws["!ref"] = "A1:K3000"; // Adjust the range if necessary
     const jsonSheet = xlsx.utils.sheet_to_json(ws);
+
+    const emailAddresses = [
+      "airlines@airiq.in",
+      "info.airiq@gmail.com",
+      "accounts@airiq.in",
+    ];
+
     const allResults = await Promise.all(
       jsonSheet.map(async (record: any) => {
         try {
@@ -63,77 +70,78 @@ export const getSpicejetStatus = async (req: Request, res: Response) => {
             throw new Error("Missing PNR in input file.");
           }
 
-          const config1 = {
-            method: "post",
-            url: `${spicejetPnrRetrieveUrl}?recordLocator=${PNR}&emailAddress=airlines@airiq.in`,
-            headers: {
-              Authorization: myToken,
-              "Content-Type": "application/json",
-            },
-            // httpsAgent: new https.Agent({ rejectUnauthorized: false }),
-          };
+          let bookingData: any = null;
 
-          let response = await axios(config1);
+          for (const email of emailAddresses) {
+            try {
+              const config = {
+                method: "post",
+                url: `${spicejetPnrRetrieveUrl}?recordLocator=${PNR}&emailAddress=${email}`,
+                headers: {
+                  Authorization: myToken,
+                  "Content-Type": "application/json",
+                },
+              };
 
-          if (!response?.data?.data && !response?.data?.bookingData) {
-            throw new Error("Invalid API response");
+              const response = await axios(config);
+              bookingData = response.data.data || response.data.bookingData;
+
+              if (bookingData?.journeys || bookingData?.recordLocator) {
+                break; // Success, exit loop
+              }
+            } catch (error: any) {
+              if (error.response?.status === 404) {
+                continue; // Try next email
+              } else {
+                throw error; // Other errors - stop trying
+              }
+            }
           }
 
-          const bookingData = response.data.data || response?.data.bookingData;
-          if (!bookingData?.journeys) {
-            throw new Error("No journeys found for this PNR.");
+          if (!bookingData) {
+            throw new Error("All email attempts failed or invalid response");
           }
+
           const journeys = bookingData.journeys;
           const length = journeys?.length || 0;
 
           if (length > 0) {
-            const designator = bookingData.journeys[0].designator;
-            const flightNumber =
-              bookingData.journeys[0].segments[0].identifier.identifier;
+            const designator = journeys[0].designator;
+            const flightNumber = journeys[0].segments[0].identifier.identifier;
             const depSector = designator.origin;
             const arrSector = designator.destination;
+
             const depDetails = designator.departure.split("T");
             const depDate = depDetails[0];
             const depTime = checkTimeFormat(depDetails[1].substring(0, 5));
+
             const arrDetails = designator.arrival.split("T");
             const arrTime = checkTimeFormat(arrDetails[1].substring(0, 5));
 
             const PAX = Object.keys(bookingData.passengers).length;
-
-            const OldPur = JSON.stringify(record.Pur); //Quantity
-
-            ////departure a-----------------------
+            const OldPur = JSON.stringify(record.Pur);
 
             const DepinputTime = record.Dep;
-            const date = moment.utc(DepinputTime).tz("Asia/Kolkata");
-            const minute = date.minutes();
-
-            const lastDigit = minute % 10;
-            let roundedMinutes = 0;
-            lastDigit === 0 || lastDigit === 5
-              ? (roundedMinutes = minute)
-              : (roundedMinutes = minute + 1);
-
-            date.minutes(roundedMinutes);
-
-            const OldDep = date.format("HH:mm A");
-
-            ////arrival b-----------------------
+            const depMoment = moment.utc(DepinputTime).tz("Asia/Kolkata");
+            const depRoundedMin = depMoment.minutes() % 10;
+            depMoment.minutes(
+              depRoundedMin === 0 || depRoundedMin === 5
+                ? depMoment.minutes()
+                : depMoment.minutes() + 1
+            );
+            const OldDep = depMoment.format("HH:mm A");
 
             const ArrinputTime = record.Arr;
-            const dateb = moment.utc(ArrinputTime).tz("Asia/Kolkata");
-            const minuteb = dateb.minutes();
+            const arrMoment = moment.utc(ArrinputTime).tz("Asia/Kolkata");
+            const arrRoundedMin = arrMoment.minutes() % 10;
+            arrMoment.minutes(
+              arrRoundedMin === 0 || arrRoundedMin === 5
+                ? arrMoment.minutes()
+                : arrMoment.minutes() + 1
+            );
+            const OldArr = arrMoment.format("HH:mm A");
 
-            const lastDigitb = minuteb % 10;
-            let roundedMinutesb = 0;
-            lastDigitb === 0 || lastDigitb === 5
-              ? (roundedMinutesb = minuteb)
-              : (roundedMinutesb = minuteb + 1);
-
-            dateb.minutes(roundedMinutesb);
-            const OldArr = dateb.format("HH:mm A");
-
-            const OldDate = moment(record.TravelDate).format("YYYY-MM-DD"); //Date
+            const OldDate = moment(record.TravelDate).format("YYYY-MM-DD");
 
             const CheckStatus = () => {
               if (
@@ -150,43 +158,14 @@ export const getSpicejetStatus = async (req: Request, res: Response) => {
             };
 
             const MyRemarks = CheckStatus();
-            const result =
-              record.PNR +
-              "|" +
-              depSector +
-              " " +
-              arrSector +
-              "|" +
-              record.Flight +
-              "|" +
-              flightNumber +
-              "|" +
-              OldPur +
-              "|" +
-              PAX +
-              "|" +
-              OldDate +
-              "|" +
-              depDate +
-              "|" +
-              OldDep +
-              "|" +
-              depTime +
-              "|" +
-              OldArr +
-              "|" +
-              arrTime +
-              "|" +
-              MyRemarks;
+
+            const result = `${PNR}|${depSector} ${arrSector}|${record.Flight}|${flightNumber}|${OldPur}|${PAX}|${OldDate}|${depDate}|${OldDep}|${depTime}|${OldArr}|${arrTime}|${MyRemarks}`;
+
             return {
-              pnr: record.PNR,
+              pnr: PNR,
               data: result,
             };
-          } else if (
-            !bookingData?.journeys ||
-            bookingData.journeys.length === 0
-          ) {
-            const PNR = bookingData?.recordLocator || record.PNR; // Ensure fallback
+          } else {
             const result = `${PNR} is Cancelled`;
             return { pnr: PNR, data: result };
           }
@@ -207,6 +186,7 @@ export const getSpicejetStatus = async (req: Request, res: Response) => {
         }
       })
     );
+
     const { results, errors } = allResults.reduce(
       (acc, result: any) => {
         if (result?.error) {
@@ -214,16 +194,16 @@ export const getSpicejetStatus = async (req: Request, res: Response) => {
         } else if (result.data) {
           acc.results.push(result.data);
         } else if (result.pnr) {
-          // Ensure cancelled PNRs are also pushed
           acc.results.push(`${result.pnr} is Cancelled`);
         }
         return acc;
       },
       { results: [] as string[], errors: [] as string[] }
     );
-    // Send the results as an array
+
     res.status(200).send({ results, errors });
   } catch (error) {
-    res.status(500).send(error);
+    console.error("Critical Error:", error);
+    res.status(500).send({ error: "Internal Server Error", details: error });
   }
 };
