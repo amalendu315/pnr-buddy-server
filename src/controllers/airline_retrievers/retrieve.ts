@@ -51,87 +51,90 @@ export const getSpiceJetData = async (req: Request, res: Response) => {
 
     const results: string[] = [];
     const errors: string[] = [];
+
+    const emailAddresses = [
+      "airlines@airiq.in",
+      "info.airiq@gmail.com",
+      "accounts@airiq.in",
+    ];
+
     await Promise.all(
       pnrs.map(async (pnr) => {
-        try {
+        let success = false;
+
+        for (const email of emailAddresses) {
           const config = {
             method: "post",
-            url: `${spicejetPnrRetrieveUrl}?recordLocator=${pnr}&emailAddress=airlines@airiq.in`,
+            url: `${spicejetPnrRetrieveUrl}?recordLocator=${pnr}&emailAddress=${email}`,
             headers: {
               Authorization: myToken,
               "Content-Type": "application/json",
             },
           };
 
-          let response: AxiosResponse;
-            response = await axios(config); 
-          const bookingData = response?.data.bookingData;
+          try {
+            const response = await axios(config);
+            const bookingData = response?.data.bookingData;
 
-          if (bookingData.journeys.length > 0) {
-            const IdType = bookingData.contacts.P.sourceOrganization;
-            const Email = bookingData.contacts.P.emailAddress;
-            const designator = bookingData.journeys[0].designator;
-            const flightNumber =
-              bookingData.journeys[0].segments[0].identifier.identifier;
-            const depSector = designator.origin;
-            const arrSector = designator.destination;
-            const depDetails = designator.departure.split("T");
-            const depTime = checkTimeFormat(depDetails[1].substring(0, 5));
-            const arrDetails = designator.arrival.split("T");
-            const arrTime = checkTimeFormat(arrDetails[1].substring(0, 5));
-            const depDate = depDetails[0];
-            const paxCount =
-              "PAX " + Object.keys(bookingData.passengers).length;
-            const PNR = bookingData.recordLocator;
-            const payment = bookingData.breakdown.totalCharged;
+            if (bookingData?.journeys?.length > 0) {
+              const IdType = bookingData.contacts.P.sourceOrganization;
+              const Email = bookingData.contacts.P.emailAddress;
+              const designator = bookingData.journeys[0].designator;
+              const flightNumber =
+                bookingData.journeys[0].segments[0].identifier.identifier;
+              const depSector = designator.origin;
+              const arrSector = designator.destination;
+              const depDetails = designator.departure.split("T");
+              const depTime = checkTimeFormat(depDetails[1].substring(0, 5));
+              const arrDetails = designator.arrival.split("T");
+              const arrTime = checkTimeFormat(arrDetails[1].substring(0, 5));
+              const depDate = depDetails[0];
+              const paxCount =
+                "PAX " + Object.keys(bookingData.passengers).length;
+              const PNR = bookingData.recordLocator;
+              const payment = bookingData.breakdown.totalCharged;
 
-            // Asynchronous file writing using fs.promises
-            try {
+              const result = `${PNR}|${depSector}|${arrSector}|${flightNumber}|${depDate}|${depTime}|${arrTime}|${paxCount}|${payment}|${IdType}|${Email}`;
+              results.push(result);
+
               await fs.appendFile(
                 "downloads/data.txt",
-                `${PNR} ${depSector} ${arrSector} ${flightNumber} ${depDate} ${depTime} ${arrTime} ${paxCount} ${payment} ${IdType} ${Email}\n`,
+                `${result.replace(/\|/g, " ")}\n`,
                 "utf8"
-              );
-            } catch (err) {
-              console.error("Error writing to file:", err);
-            }
+              );              
 
-            const result = `${PNR}|${depSector}|${arrSector}|${flightNumber}|${depDate}|${depTime}|${arrTime}|${paxCount}|${payment}|${IdType}|${Email}`;
-            results.push(result);
-            return result;
-          } else {
-            const PNR = bookingData?.recordLocator;
-            const Email = bookingData?.contacts.P.emailAddress;
+              success = true;
+              break; // Success, no need to try other emails
+            } else {
+              const PNR = bookingData?.recordLocator;
+              const Email = bookingData?.contacts?.P?.emailAddress || email;
+              const result = `${PNR}| is cancelled`;
 
-            // Asynchronous file writing
-            try {
+              results.push(result);
               await fs.appendFile(
                 "downloads/data.txt",
                 `${PNR} is cancelled ${Email}\n`,
                 "utf8"
               );
-            } catch (err) {
-              console.error("Error writing to file:", err);
+
+              success = true;
+              break;
             }
-
-            console.log(`${PNR}| is cancelled`);
-
-            const result = `${PNR}| is cancelled`;
-            results.push(result);
-            return result;
+          } catch (error: any) {
+            if (error?.response?.status === 404) {
+              continue; // Try next email
+            }
+            console.error(`Attempt with ${email} failed:`, error.message);
           }
-        } catch (error:any) {
-          console.error(`Error processing PNR ${pnr}:`, error?.message);
-          if (error?.response?.status === 404) {
-            errors.push(`PNR ${pnr} not found`); // Add 404 errors to the array
-          } else {
-            errors.push(`Error processing PNR ${pnr}: ${error?.message}`);
-          }
+        }
+
+        if (!success) {
+          errors.push(`All attempts failed for PNR ${pnr}`);
         }
       })
     );
 
-    res.status(200).send({results:results.join("\n"), errors});
+    res.status(200).send({ results: results.join("\n"), errors });
   } catch (error) {
     console.error("Error fetching SpiceJet data:", error);
     res.status(500).send(error);
