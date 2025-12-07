@@ -24,7 +24,7 @@ const allowedOrigins = [
   "http://ec2-3-110-55-153.ap-south-1.compute.amazonaws.com",
   "http://ec2-35-154-145-73.ap-south-1.compute.amazonaws.com:3001",
   "http://3.110.55.153",
-  "http://13.202.144.148"
+  "http://13.202.144.148:3001"
 ];
 app.use(
   cors({
