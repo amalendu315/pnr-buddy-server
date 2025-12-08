@@ -57,7 +57,8 @@ export const getSpiceJetData = async (req: Request, res: Response) => {
       "info.airiq@gmail.com",
       "accounts@airiq.in",
         "airlines.reco@airiq.in",
-        "chitra@airiq.in"
+        "chitra@airiq.in",
+        "support@vishaltravels.in"
     ];
 
     await Promise.all(
